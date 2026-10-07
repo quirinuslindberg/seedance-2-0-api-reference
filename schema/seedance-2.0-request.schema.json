@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/quirinuslindberg/seedance-2-0-api-reference/main/schema/seedance-2.0-request.schema.json",
+  "title": "Seedance 2.0 video generation request",
+  "description": "Body of POST /v1/videos/generations for seedance-2.0, seedance-2.0-fast and seedance-2.0-mini, as documented on 2026-10-07. Canonical field names plus the fal/OpenRouter aliases the API accepts. Byte length of prompt, media length and pixel limits are checked by the server, not by this schema.",
+  "type": "object",
+  "required": ["model", "prompt"],
+  "additionalProperties": false,
+  "properties": {
+    "model": {
+      "enum": ["seedance-2.0", "seedance-2.0-fast", "seedance-2.0-mini"]
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "description": "Required in every mode. UTF-8, at most 40,000 bytes. Name assets as @Image 1, @Video 1, @Audio 1."
+    },
+    "duration": {
+      "type": "integer",
+      "minimum": 4,
+      "maximum": 15,
+      "default": 5,
+      "description": "Whole seconds. Left out, the job renders and bills 5 s."
+    },
+    "seconds": {
+      "type": "integer",
+      "minimum": 4,
+      "maximum": 15,
+      "description": "Alias of duration; send one or the other."
+    },
+    "resolution": {
+      "enum": ["480p", "720p", "1080p", "4k"],
+      "default": "720p",
+      "description": "1080p and 4k only on seedance-2.0."
+    },
+    "aspect_ratio": {
+      "$ref": "#/$defs/ratio"
+    },
+    "ratio": {
+      "$ref": "#/$defs/ratio",
+      "description": "Alias of aspect_ratio; send one or the other."
+    },
+    "size": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{2,4}x[1-9][0-9]{2,4}$",
+      "description": "WIDTHxHEIGHT instead of resolution + aspect_ratio: the short side picks the tier, the shape the ratio (1280x720 = 720p 16:9). A resolution or aspect_ratio sent with it must agree."
+    },
+    "generate_audio": {
+      "type": "boolean",
+      "default": true
+    },
+    "n": {
+      "const": 1,
+      "description": "Every request produces exactly one video."
+    },
+    "watermark": {
+      "const": false,
+      "description": "watermark: true is rejected."
+    },
+    "seed": false,
+    "start_image": {
+      "$ref": "#/$defs/media",
+      "description": "First frame. Cannot be combined with any reference list."
+    },
+    "end_image": {
+      "$ref": "#/$defs/media",
+      "description": "Last frame; only together with start_image."
+    },
+    "reference_images": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/media" },
+      "maxItems": 9,
+      "description": "JPEG or PNG, up to 20 MiB each. Free."
+    },
+    "reference_videos": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/media" },
+      "maxItems": 3,
+      "description": "2-15 s each, 15 s combined. Their seconds are added to the billed seconds."
+    },
+    "reference_audios": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/media" },
+      "maxItems": 3,
+      "description": "WAV or MP3, 2-15 s each, 15 s combined. Needs at least one image or video beside it. Free."
+    },
+    "image_url": { "$ref": "#/$defs/https_url", "description": "fal alias of start_image." },
+    "end_image_url": { "$ref": "#/$defs/https_url", "description": "fal alias of end_image." },
+    "image_urls": { "type": "array", "items": { "$ref": "#/$defs/https_url" }, "maxItems": 9, "description": "fal alias of reference_images." },
+    "video_urls": { "type": "array", "items": { "$ref": "#/$defs/https_url" }, "maxItems": 3, "description": "fal alias of reference_videos." },
+    "audio_urls": { "type": "array", "items": { "$ref": "#/$defs/https_url" }, "maxItems": 3, "description": "fal alias of reference_audios." },
+    "frame_images": {
+      "type": "array",
+      "maxItems": 2,
+      "description": "OpenRouter alias: first_frame -> start_image, last_frame -> end_image.",
+      "items": {
+        "type": "object",
+        "required": ["type", "image_url", "frame_type"],
+        "properties": {
+          "type": { "const": "image_url" },
+          "image_url": { "$ref": "#/$defs/media" },
+          "frame_type": { "enum": ["first_frame", "last_frame"] }
+        }
+      }
+    },
+    "input_references": {
+      "type": "array",
+      "maxItems": 15,
+      "description": "OpenRouter alias of the three reference lists; images, videos and audio are numbered separately in order.",
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": { "enum": ["image_url", "video_url", "audio_url"] },
+          "image_url": { "$ref": "#/$defs/media" },
+          "video_url": { "$ref": "#/$defs/media" },
+          "audio_url": { "$ref": "#/$defs/media" }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "description": "Fast and Mini render 480p and 720p only.",
+      "if": { "properties": { "model": { "enum": ["seedance-2.0-fast", "seedance-2.0-mini"] } } },
+      "then": { "properties": { "resolution": { "enum": ["480p", "720p"] } } }
+    },
+    {
+      "description": "Frames and reference lists are mutually exclusive.",
+      "if": { "anyOf": [{ "required": ["start_image"] }, { "required": ["end_image"] }, { "required": ["image_url"] }, { "required": ["frame_images"] }] },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["reference_images"] }, { "required": ["reference_videos"] }, { "required": ["reference_audios"] },
+            { "required": ["image_urls"] }, { "required": ["video_urls"] }, { "required": ["audio_urls"] },
+            { "required": ["input_references"] }
+          ]
+        }
+      }
+    },
+    {
+      "description": "adaptive is only valid with a first frame; text and reference requests take a fixed ratio.",
+      "if": { "not": { "anyOf": [{ "required": ["start_image"] }, { "required": ["image_url"] }, { "required": ["frame_images"] }] } },
+      "then": {
+        "properties": {
+          "aspect_ratio": { "not": { "const": "adaptive" } },
+          "ratio": { "not": { "const": "adaptive" } }
+        }
+      }
+    },
+    {
+      "description": "Audio cannot be the only reference on the 2.0 family.",
+      "if": { "required": ["reference_audios"], "properties": { "reference_audios": { "minItems": 1 } } },
+      "then": {
+        "anyOf": [
+          { "required": ["reference_images"], "properties": { "reference_images": { "minItems": 1 } } },
+          { "required": ["reference_videos"], "properties": { "reference_videos": { "minItems": 1 } } }
+        ]
+      }
+    },
+    {
+      "description": "One name per value.",
+      "not": {
+        "anyOf": [
+          { "required": ["duration", "seconds"] },
+          { "required": ["aspect_ratio", "ratio"] },
+          { "required": ["start_image", "image_url"] },
+          { "required": ["end_image", "end_image_url"] },
+          { "required": ["reference_images", "image_urls"] },
+          { "required": ["reference_videos", "video_urls"] },
+          { "required": ["reference_audios", "audio_urls"] }
+        ]
+      }
+    }
+  ],
+  "dependentRequired": {
+    "end_image": ["start_image"],
+    "end_image_url": ["image_url"]
+  },
+  "$defs": {
+    "https_url": {
+      "type": "string",
+      "pattern": "^https://",
+      "description": "Public HTTPS address that downloads without signing in. Base64 data URIs and file IDs are rejected."
+    },
+    "media": {
+      "type": "object",
+      "required": ["url"],
+      "additionalProperties": false,
+      "properties": { "url": { "$ref": "#/$defs/https_url" } }
+    },
+    "ratio": {
+      "enum": ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "adaptive"],
+      "default": "16:9",
+      "description": "Fixed ratios crop a first frame; adaptive follows it (frame modes only)."
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "model": "seedance-2.0",
+  "prompt": "The empty stage fills with dancers as the lights come up, slow push-in",
+  "duration": 8,
+  "resolution": "4k",
+  "aspect_ratio": "16:9",
+  "start_image": {"url": "https://example.com/stage-empty.png"},
+  "end_image": {"url": "https://example.com/stage-full.png"}
+}

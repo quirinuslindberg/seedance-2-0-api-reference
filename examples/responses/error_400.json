@@ -1,0 +1,8 @@
+{
+  "error": {
+    "type": "invalid_request_error",
+    "code": "request_unsupported",
+    "param": "resolution",
+    "message": "seedance-2.0-mini does not support video resolution 1080p"
+  }
+}

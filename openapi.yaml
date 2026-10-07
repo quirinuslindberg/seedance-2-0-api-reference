@@ -1,0 +1,340 @@
+openapi: 3.1.0
+info:
+  title: Seedance 2.0 video API (seedance-2.0, seedance-2.0-fast, seedance-2.0-mini)
+  version: "2026-10-07"
+  summary: Asynchronous video jobs for the Seedance 2.0 family, as documented on 2026-10-07.
+  description: |
+    Community description of the `/v1/videos` job protocol for Seedance 2.0, written from the
+    public model pages and API docs. Submit a job, poll it until `done`, download the MP4.
+    Prices: https://argolink.io/en/models/seedance-2.0 (per output second).
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: https://argolink.io
+security:
+  - bearerAuth: []
+tags:
+  - name: Videos
+  - name: Media
+  - name: Models
+paths:
+  /v1/models:
+    get:
+      tags: [Models]
+      operationId: listModels
+      summary: List public model IDs (no key required)
+      security: []
+      responses:
+        "200":
+          description: OpenAI-style model list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelList"
+  /v1/videos/generations:
+    post:
+      tags: [Videos]
+      operationId: createVideoJob
+      summary: Submit a Seedance 2.0 job
+      description: |
+        The media fields present pick the mode: none = text to video, start_image (+ end_image) =
+        frames, any reference list = reference. Frames and references cannot be combined.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schema/seedance-2.0-request.schema.json"
+            examples:
+              text:
+                externalValue: ./examples/requests/text_to_video.json
+              frames4k:
+                externalValue: ./examples/requests/first_last_frame_4k.json
+              reference:
+                externalValue: ./examples/requests/reference_mixed.json
+      responses:
+        "202":
+          description: Accepted. Keep request_id; it is the only handle for status, content and billing.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request_id]
+                properties:
+                  request_id:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "402":
+          $ref: "#/components/responses/PaymentOrPermission"
+        "403":
+          $ref: "#/components/responses/PaymentOrPermission"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+  /v1/videos/{request_id}:
+    get:
+      tags: [Videos]
+      operationId: getVideoJob
+      summary: Job status; poll every 10-15 s
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: The job.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /v1/videos/{request_id}/content:
+    get:
+      tags: [Videos]
+      operationId: getVideoContent
+      summary: Download the MP4 once the job is done
+      description: Streams video/mp4 and supports Range requests. Same key as the job.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: The video.
+          content:
+            video/mp4:
+              schema:
+                type: string
+                contentMediaType: video/mp4
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: job_video_not_ready - the job is still pending.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "424":
+          description: job_failed - the job failed; its status carries the reason.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+  /v1/media/uploads:
+    post:
+      tags: [Media]
+      operationId: createUploadTicket
+      summary: Get a signed URL for a local image, video or audio file
+      description: |
+        Free, creates no job. PUT the bytes to upload_url (valid 15 minutes) with exactly the
+        declared Content-Type and without the API key, then send media_url (readable 7 days).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadTicketRequest"
+      responses:
+        "200":
+          description: Upload ticket.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadTicket"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    RequestId:
+      name: request_id
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: field_invalid, json_invalid or request_unsupported. Nothing is charged.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    Unauthorized:
+      description: Missing or invalid API key (authentication_error).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    PaymentOrPermission:
+      description: Insufficient balance, or the key's group has no video permission.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    NotFound:
+      description: video_request_not_found - unknown request_id, or a key of another user.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    RateLimited:
+      description: rate_limit_error - concurrency or rate limit; retry when running jobs finish.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    Unavailable:
+      description: overloaded_error/no_capacity (honour Retry-After) or api_error. Nothing is charged.
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+  schemas:
+    ModelList:
+      type: object
+      properties:
+        object:
+          const: list
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                examples: [seedance-2.0, seedance-2.0-fast, seedance-2.0-mini]
+              object:
+                const: model
+              created:
+                type: integer
+                description: Compatibility field, fixed at 0.
+              owned_by:
+                type: string
+                examples: [bytedance]
+    Job:
+      type: object
+      required: [request_id, status]
+      properties:
+        request_id:
+          type: string
+        status:
+          enum: [pending, done, failed, expired]
+        model:
+          type: string
+        created_at:
+          type: integer
+          description: Submission time, Unix seconds.
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: 0-99 while pending (0 until a forecast exists; stays at 99 past it), 100 when done.
+        estimated_seconds_remaining:
+          type: integer
+          description: Only while pending and once a forecast exists.
+        video:
+          type: object
+          description: Present when done.
+          properties:
+            duration:
+              type: integer
+            url:
+              type: string
+              description: Same address as /content; download it with the same key.
+        usage:
+          type: object
+          description: Present when done. The job is billed billed_seconds x the per-second rate.
+          properties:
+            output_seconds:
+              type: integer
+            reference_video_seconds:
+              type: integer
+            billed_seconds:
+              type: integer
+        error:
+          $ref: "#/components/schemas/JobError"
+    JobError:
+      type: object
+      description: Present when status is failed. Failed and expired jobs are not billed.
+      properties:
+        code:
+          enum:
+            - invalid_input
+            - content_policy_violation
+            - copyright_violation
+            - generation_failed
+            - generation_timeout
+            - capacity_unavailable
+            - internal_error
+            - cancelled
+        message:
+          type: string
+        retryable:
+          type: boolean
+          description: true when the failure consumed no generation and the same request can be sent again.
+        field:
+          type: string
+          description: The input at fault, for input problems.
+    ErrorBody:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            type:
+              type: string
+              examples: [invalid_request_error, authentication_error, not_found_error, rate_limit_error, overloaded_error, api_error]
+            code:
+              type: [string, "null"]
+              examples: [field_invalid, json_invalid, request_unsupported, video_request_not_found, job_video_not_ready, job_failed, no_capacity]
+            param:
+              type: [string, "null"]
+            message:
+              type: string
+    UploadTicketRequest:
+      type: object
+      required: [model, type, content_type, size_bytes]
+      properties:
+        model:
+          enum: [seedance-2.0, seedance-2.0-fast, seedance-2.0-mini]
+        type:
+          enum: [image, video, audio]
+        content_type:
+          type: string
+          description: |
+            image: image/jpeg, image/png (Seedance generation takes no WebP).
+            video: video/mp4, video/quicktime, video/webm (Seedance references: MP4 or MOV).
+            audio: audio/mpeg, audio/wav, audio/mp4, audio/aac (Seedance references: MP3 or WAV).
+        size_bytes:
+          type: integer
+          minimum: 1
+          description: Must equal the real file size.
+    UploadTicket:
+      type: object
+      required: [upload_url, media_url]
+      properties:
+        upload_url:
+          type: string
+          description: Signed PUT target, valid 15 minutes.
+        media_url:
+          type: string
+          description: Put this in start_image, end_image or a reference list; readable 7 days.
+        upload_expires_at:
+          description: When upload_url stops working.
+        expires_at:
+          description: When media_url stops working.

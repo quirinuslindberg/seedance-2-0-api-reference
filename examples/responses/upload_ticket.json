@@ -1,0 +1,4 @@
+{
+  "upload_url": "https://storage.example.com/upload/abc123?signature=...",
+  "media_url": "https://media.example.com/abc123.png"
+}

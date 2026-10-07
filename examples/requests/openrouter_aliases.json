@@ -1,0 +1,10 @@
+{
+  "model": "seedance-2.0",
+  "prompt": "The person in @Image 1 walks into the room shown in @Video 1",
+  "size": "1280x720",
+  "seconds": 6,
+  "input_references": [
+    {"type": "image_url", "image_url": {"url": "https://example.com/person.png"}},
+    {"type": "video_url", "video_url": {"url": "https://example.com/room-3s.mp4"}}
+  ]
+}

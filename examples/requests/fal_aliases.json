@@ -1,0 +1,8 @@
+{
+  "model": "seedance-2.0-fast",
+  "prompt": "Morning fog lifts off the lake as the sun comes up",
+  "duration": 6,
+  "resolution": "480p",
+  "image_url": "https://example.com/lake-dawn.png",
+  "end_image_url": "https://example.com/lake-morning.png"
+}

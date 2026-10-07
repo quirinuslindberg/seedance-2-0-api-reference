@@ -1,0 +1,8 @@
+{
+  "model": "seedance-2.0",
+  "prompt": "Shot 1: a cable car glides over a misty gorge, wide shot. Shot 2: close-up of a child pressing her hands to the window. <wind hum> Keep it subtitle-free.",
+  "duration": 10,
+  "resolution": "1080p",
+  "aspect_ratio": "21:9",
+  "generate_audio": true
+}

@@ -1,0 +1,11 @@
+{
+  "request_id": "7d2e91c0-3b6a-4c8f-a2d4-e15f6b90c374",
+  "status": "failed",
+  "model": "seedance-2.0-fast",
+  "error": {
+    "code": "invalid_input",
+    "message": "reference_videos[0] is 17 s long; each reference video must be 2-15 s",
+    "retryable": false,
+    "field": "reference_videos"
+  }
+}

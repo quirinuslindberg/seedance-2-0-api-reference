@@ -1,0 +1,8 @@
+{
+  "model": "seedance-2.0-mini",
+  "prompt": "The candle flame bends as a door opens off screen, fixed camera",
+  "duration": 5,
+  "resolution": "720p",
+  "aspect_ratio": "adaptive",
+  "start_image": {"url": "https://example.com/candle.png"}
+}

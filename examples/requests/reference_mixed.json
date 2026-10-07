@@ -1,0 +1,10 @@
+{
+  "model": "seedance-2.0-fast",
+  "prompt": "The courier in @Image 1 rides the bike from @Image 2 through the alley, copying the camera move of @Video 1, to the rhythm of @Audio 1",
+  "duration": 9,
+  "resolution": "720p",
+  "aspect_ratio": "9:16",
+  "reference_images": [{"url": "https://example.com/courier.png"}, {"url": "https://example.com/bike.jpg"}],
+  "reference_videos": [{"url": "https://example.com/alley-dolly-4s.mp4"}],
+  "reference_audios": [{"url": "https://example.com/drum-loop.mp3"}]
+}
